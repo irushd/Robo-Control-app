@@ -3,24 +3,37 @@ package npu.robotcontrol;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.UUID;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+
+import android.R.bool;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.ParcelUuid;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.app.Activity;
+import android.util.Log;
 //import android.view.Menu;
 import android.view.View.OnClickListener;
 import android.view.View;
 
 
 import android.bluetooth.*;	///Bluetooth API is imported
+import android.content.Context;
 
-
-
-public class Control extends Activity {
+public class Control extends Activity implements LocationListener {
 
 	Button aButton;
 	//I roughly tested the buttons with a print statements
@@ -31,15 +44,33 @@ public class Control extends Activity {
 	BluetoothAdapter bluetooth;
 	BluetoothDevice remote;
 	BluetoothSocket remoteSocket;
-	private static final UUID uuid1 = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); // fromString("0x0000000000001000800000805F9B34FB");
-//	private static final UUID SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); 00001101-0000-1000-8000-00805F9B34FB
-    @Override
-    
-    
+	private static final UUID uuid1 = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); 
+
+	 private TextView latituteField;
+	 private TextView longitudeField;
+	 private LocationManager locationManager;
+	 private String provider;
+	 private boolean serverConnection=false;
+	
+	@Override   
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_control);
-    
+        
+        latituteField = (TextView) findViewById(R.id.textView1);//@+id/textView1
+        longitudeField = (TextView) findViewById(R.id.textView2); //@+id/textView2
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        Criteria criteria = new Criteria();
+        provider = locationManager.getBestProvider(criteria, false);
+        Location location = locationManager.getLastKnownLocation(provider);
+        if (location != null) {
+          //  System.out.println("Provider " + provider + " has been selected.");
+            onLocationChanged(location);
+          } else {
+            latituteField.setText("Location not available");
+            longitudeField.setText("Location not available");
+          }
+        
         aButton = (Button) this.findViewById(R.id.button1);
     	aButton.setOnClickListener(new OnClickListener() {
     		public void onClick(View v){
@@ -55,7 +86,18 @@ public class Control extends Activity {
     		}
     		}); 
     
-    
+    	Switch toggle = (Switch) findViewById(R.id.switch1); //@+id/switch1
+    	toggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+    	    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+    	        if (isChecked) {
+    	            serverConnection = true;
+    	        	OpenHttpGETConnection("172.19.2.49:8080/RobotControl/GPS?first="+latituteField.getText()+"&second="+longitudeField.getText());    	        	  	        	
+    	        } else {
+    	        	serverConnection = false;
+    	        }
+    	    }
+    	});
+    	
     
     	aButton = (Button) this.findViewById(R.id.button2);
     	aButton.setOnClickListener(new OnClickListener() {
@@ -69,11 +111,9 @@ public class Control extends Activity {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			}
-	            
+			}    
     		}
     		}); 
-    
     
     
     	aButton = (Button) this.findViewById(R.id.button3);
@@ -109,7 +149,6 @@ public class Control extends Activity {
 	             
     		}
     		});
-    	
     	
     	
     	aButton = (Button) this.findViewById(R.id.button4);
@@ -163,22 +202,22 @@ public class Control extends Activity {
 					e.printStackTrace();
 					status = "Socket not created it"+e.toString();
 					aButton.setText(status);
-    			  }
-				  
+    			  } 
     			}
     			else
     			{
     			    status = "Bluetooth is not Enabled.";
     			    aButton.setText(status);
-    			}
+    			    Thread thread = new Thread(){	
+    			    public void run(){
+    			    OpenHttpGETConnection("http://192.168.1.1:8080/RobotControlWeb/GPS?first="
+    			    		+String.valueOf(lat)+"&second="+String.valueOf(lng));    
+    			    }	};  
+    			    thread.start();
+    		}
     			
-    			
-    			
-    		
     		}
     		}); 
-    	
-    	
     	
     	aButton = (Button) this.findViewById(R.id.button6);
     	aButton.setOnClickListener(new OnClickListener() {
@@ -192,13 +231,9 @@ public class Control extends Activity {
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				}
-	             
+				}         
     		}
     		}); 
-    	
-    	
-    	
     	
     	
     	aButton = (Button) this.findViewById(R.id.button7);
@@ -218,26 +253,68 @@ public class Control extends Activity {
     		public void onClick(View v){
     			//whatever you want to do goes here
     			aButton.setText("Status");
-
     		}
     		}); 
-    	
-    	
-    	
-    	
-    	
     	
     }
 
     
- 
+	@Override
+	protected void onResume() {
+		    super.onResume();
+		    locationManager.requestLocationUpdates(provider, 400, 1, this);
+		  }
+	int lat;
+	int lng;
+	@Override
+	protected void onPause() {
+	    super.onPause();
+	    locationManager.removeUpdates(this);
+	}
+	
+	  public void onLocationChanged(Location location) {
+	    lat = (int) (location.getLatitude());
+	    lng = (int) (location.getLongitude());
+	    latituteField.setText(String.valueOf(lat));
+	    longitudeField.setText(String.valueOf(lng));
+	    if(serverConnection){
+	        	OpenHttpGETConnection("http://172.19.2.49:8080/RobotControlWeb/GPS?first="
+	        		+String.valueOf(lat)+"&second="+String.valueOf(lng));    
+	        	
+	    }
+	  }
     
+	  public void onProviderDisabled(String provider) {
+		    Toast.makeText(this, "Disabled provider " + provider,
+		        Toast.LENGTH_SHORT).show();
+		  }
+	  
+	  public void onProviderEnabled(String provider) {
+		    Toast.makeText(this, "Enabled new provider " + provider,
+		        Toast.LENGTH_SHORT).show();
+
+		  }
+	  
+	  
+	  public void onStatusChanged(String provider, int status, Bundle extras) {
+	    // TODO Auto-generated method stub
+
+	  }
     
-    
-    
-    
-    
-    
+	  public static InputStream OpenHttpGETConnection(String url) {
+	        InputStream inputStream = null;
+	        try {
+	        	URI uri = new URI(url);
+	            HttpClient httpclient = new DefaultHttpClient();
+	            HttpGet request = new HttpGet();
+	            request.setURI(uri);	            
+	            HttpResponse httpResponse = httpclient.execute(request);
+	            inputStream = httpResponse.getEntity().getContent();
+	        } catch (Exception e) {
+	            Log.d("InputStream", e.getLocalizedMessage());
+	        }
+	        return inputStream;
+	    }
     
     
     // @Override
