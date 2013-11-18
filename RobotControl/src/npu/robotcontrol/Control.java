@@ -177,7 +177,6 @@ public class Control extends Activity implements LocationListener {
     		public void onClick(View v){
     			//whatever you want to do goes here
     			//////////////////////
-    			BluetoothServerSocket x;
     			bluetooth = BluetoothAdapter.getDefaultAdapter();
     			String status;
     			if (bluetooth.isEnabled()) {
