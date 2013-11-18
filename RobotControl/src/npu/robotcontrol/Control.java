@@ -57,7 +57,7 @@ public class Control extends Activity implements LocationListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_control);
         
-        latituteField = (TextView) findViewById(R.id.textView1);//@+id/textView1
+        latituteField = (TextView) findViewById(R.id.textViewIP);//@+id/textView1
         longitudeField = (TextView) findViewById(R.id.textView2); //@+id/textView2
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         Criteria criteria = new Criteria();
@@ -71,7 +71,7 @@ public class Control extends Activity implements LocationListener {
             longitudeField.setText("Location not available");
           }
         
-        aButton = (Button) this.findViewById(R.id.button1);
+        aButton = (Button) this.findViewById(R.id.buttonStart);
     	aButton.setOnClickListener(new OnClickListener() {
     		public void onClick(View v){
     			aButton.setText("Robot moves up");
