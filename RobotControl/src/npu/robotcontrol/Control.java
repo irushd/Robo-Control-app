@@ -86,7 +86,7 @@ public class Control extends Activity implements LocationListener {
     		}
     		}); 
     
-    	Switch toggle = (Switch) findViewById(R.id.switch1); //@+id/switch1
+    	Switch toggle = (Switch) findViewById(R.id.switchWebService); //@+id/switch1
     	toggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
     	    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
     	        if (isChecked) {

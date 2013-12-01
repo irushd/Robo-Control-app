@@ -29,6 +29,10 @@
         <activity
             android:name="npu.robotcontrol.ServerActivity"
             android:label="@string/title_activity_server" >
+        </activity>
+        <activity
+            android:name="npu.robotcontrol.WebActivity"
+            android:label="@string/title_activity_web" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
